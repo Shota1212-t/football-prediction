@@ -1,0 +1,8 @@
+torch
+torchvision
+pandas
+scikit-learn
+requests
+python-dotenv
+joblib
+streamlit

@@ -1,55 +1,59 @@
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+import joblib # 追加：物差しを保存するため
 
 # 1. データの読み込み
 df = pd.read_csv('final_training_data.csv')
 
-# 入力(X)と正解(y)に分ける
 X = df.drop('result', axis=1).values
 y = df['result'].values
 
-# 2. データの正規化（NNの学習を安定させるために必須）
+# 2. データの正規化（スケーリング）
 scaler = StandardScaler()
 X = scaler.fit_transform(X)
 
-# 学習用とテスト用に分割 (8:2)
+# 学習用とテスト用に分割
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# PyTorchのTensor型に変換
 X_train = torch.FloatTensor(X_train)
 X_test = torch.FloatTensor(X_test)
 y_train = torch.LongTensor(y_train)
 y_test = torch.LongTensor(y_test)
 
-# 3. ニューラルネットワークのモデル定義
+# 3. モデル定義（極端な予測を防ぐため、深くしてDropoutを強化）
 class SoccerPredictor(nn.Module):
     def __init__(self, input_size):
         super(SoccerPredictor, self).__init__()
-        # 層の積み上げ
-        self.fc1 = nn.Linear(input_size, 128) # 第1層
+        self.fc1 = nn.Linear(input_size, 128)
         self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(0.2)        # 過学習防止
-        self.fc2 = nn.Linear(128, 64)         # 第2層
-        self.fc3 = nn.Linear(64, 3)           # 出力層（勝・分・負の3択）
+        self.dropout1 = nn.Dropout(0.4) # 強化
+        self.fc2 = nn.Linear(128, 64)
+        self.dropout2 = nn.Dropout(0.4) # 追加
+        self.fc3 = nn.Linear(64, 32)    # 追加：層を深くする
+        self.fc4 = nn.Linear(32, 3)     # 出力層
         
     def forward(self, x):
         x = self.relu(self.fc1(x))
-        x = self.dropout(x)
+        x = self.dropout1(x)
         x = self.relu(self.fc2(x))
-        x = self.fc3(x)
+        x = self.dropout2(x)
+        x = self.relu(self.fc3(x))
+        x = self.fc4(x)
         return x
 
 model = SoccerPredictor(X_train.shape[1])
 
-# 4. 損失関数と最適化アルゴリズムの設定
-criterion = nn.CrossEntropyLoss() # 分類問題の定番
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+# 4. 損失関数と最適化
+criterion = nn.CrossEntropyLoss()
+# weight_decay (L2正則化) を追加して、自信過剰（極端な確率）を抑制
+optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-4)
 
 # 5. 学習ループ
 epochs = 200
@@ -72,6 +76,7 @@ with torch.no_grad():
     accuracy = (predicted == y_test).sum().item() / y_test.size(0)
     print(f'テストデータの正解率: {accuracy * 100:.2f}%')
 
-# 7. モデルの保存（後で予測に使うため）
+# 7. 保存（モデルと物差し）
 torch.save(model.state_dict(), 'soccer_model.pth')
-print("モデルを 'soccer_model.pth' として保存しました。")
+joblib.dump(scaler, 'scaler.pkl')
+print("モデル('soccer_model.pth')と正規化スケール('scaler.pkl')を保存しました。")

@@ -1,9 +1,10 @@
-import requests
 import os
-from dotenv import load_dotenv
+import streamlit as st # st.secretsを使うために追加
+import requests
 
-load_dotenv()
-API_KEY = os.getenv('FOOTBALL_API_KEY')
+# APIキーの取得優先順位：1. Streamlit Secrets(本番) 2. 環境変数(ローカル)
+API_KEY = st.secrets.get("FOOTBALL_API_KEY") or os.getenv('FOOTBALL_API_KEY')
+
 headers = { 'X-Auth-Token': API_KEY }
 
 def get_recent_points(team_id):

@@ -84,9 +84,14 @@ with tab2:
             if standings:
                 table_data = []
                 # API制限を考慮し、上位10チームに絞る
-                for s in standings[:10]:
+                for s in standings[:8]: 
                     team_id = s['team']['id']
                     recent_form = get_team_form_api(team_id)
+                    
+                    # もしAPI制限で取得できなかったら "-" にする
+                    if recent_form is None:
+                        recent_form = "-"
+                        
                     table_data.append({
                         "順位": s['position'],
                         "チーム": s['team']['name'],

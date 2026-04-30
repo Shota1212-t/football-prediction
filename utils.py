@@ -1,9 +1,27 @@
 import os
-import streamlit as st # st.secretsを使うために追加
+import streamlit as st
 import requests
+from dotenv import load_dotenv # 追加
 
-# APIキーの取得優先順位：1. Streamlit Secrets(本番) 2. 環境変数(ローカル)
-API_KEY = st.secrets.get("FOOTBALL_API_KEY") or os.getenv('FOOTBALL_API_KEY')
+# プロジェクト内の .env ファイルを読み込む
+load_dotenv()
+
+# APIキーの取得
+API_KEY = None
+
+try:
+    # 1. 本番環境（Streamlit Cloud）用
+    if hasattr(st, "secrets") and "FOOTBALL_API_KEY" in st.secrets:
+        API_KEY = st.secrets["FOOTBALL_API_KEY"]
+except Exception:
+    pass
+
+# 2. ローカル環境用（もしSecretsで取れなかったら）
+if not API_KEY:
+    API_KEY = os.getenv('FOOTBALL_API_KEY')
+
+# デバッグ用（確認したら消してOK）
+print(f"DEBUG: API_KEY is {'Found' if API_KEY else 'Not Found'}")
 
 headers = { 'X-Auth-Token': API_KEY }
 
@@ -27,4 +45,20 @@ def get_recent_points(team_id):
 def get_upcoming_matches_api():
     url = "https://api.football-data.org/v4/competitions/PL/matches?status=SCHEDULED"
     response = requests.get(url, headers=headers)
-    return response.json()['matches']
+    if response.status_code != 200:
+        return []
+    
+    data = response.json()
+    # 試合データの中にエンブレムのURLが含まれているので、そのまま返せばOKです
+    return data.get('matches', [])
+
+
+
+# ...（中略）
+if not API_KEY:
+    API_KEY = os.getenv('FOOTBALL_API_KEY')
+
+# 追加：キーが取れているか確認
+print(f"DEBUG: API_KEY is {'Found' if API_KEY else 'Not Found'}")
+
+headers = { 'X-Auth-Token': API_KEY }

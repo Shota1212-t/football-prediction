@@ -73,34 +73,37 @@ with tab1:
 # app.py の Tab 2 部分
 with tab2:
     st.subheader("📊 Premier League Standings")
-    standings = get_standings_api()
-    if standings:
-        table_data = []
-        # プログレスバー（読み込み中）を出すと親切です
-        progress_text = "戦績を取得中..."
-        my_bar = st.progress(0, text=progress_text)
-        
-        for i, s in enumerate(standings):
-            team_id = s['team']['id']
-            # 各チームの直近5試合の戦績を取得
-            # 注意：API制限(1分10回)に当たりやすいため、本来はここもキャッシュすべきです
-            recent_form = get_team_form_api(team_id)
-            
-            table_data.append({
-                "順位": s['position'],
-                "チーム": s['team']['name'],
-                "試合": s['playedGames'],
-                "勝": s['won'],
-                "分": s['draw'],
-                "負": s['lost'],
-                "点": s['points'],
-                "直近5試合": recent_form # ここに生成したW D Lを入れる
-            })
-            my_bar.progress((i + 1) / len(standings), text=progress_text)
-        
-        my_bar.empty() # プログレスバーを消す
-        df_standings = pd.DataFrame(table_data)
-        st.dataframe(df_standings, hide_index=True, use_container_width=True)      
+    
+    # セッション状態を使って、ボタンを押すまでデータを保持する
+    if 'standings_data' not in st.session_state:
+        st.session_state.standings_data = None
+
+    if st.button('順位表と戦績を最新にする（APIを消費します）'):
+        with st.spinner('データを取得中...'):
+            standings = get_standings_api()
+            if standings:
+                table_data = []
+                # API制限を考慮し、上位10チームに絞る
+                for s in standings[:10]:
+                    team_id = s['team']['id']
+                    recent_form = get_team_form_api(team_id)
+                    table_data.append({
+                        "順位": s['position'],
+                        "チーム": s['team']['name'],
+                        "試合": s['playedGames'],
+                        "勝": s['won'],
+                        "分": s['draw'],
+                        "負": s['lost'],
+                        "点": s['points'],
+                        "直近5試合": recent_form
+                    })
+                st.session_state.standings_data = pd.DataFrame(table_data)
+
+    # 取得済みのデータがあれば表示
+    if st.session_state.standings_data is not None:
+        st.dataframe(st.session_state.standings_data, hide_index=True, use_container_width=True)
+    else:
+        st.info("「最新にする」ボタンを押すと順位表が表示されます。")
 
 # --- Tab 3: 得点ランキング ---
 with tab3:

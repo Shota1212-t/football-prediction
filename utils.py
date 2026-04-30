@@ -25,7 +25,7 @@ print(f"DEBUG: API_KEY is {'Found' if API_KEY else 'Not Found'}")
 
 headers = { 'X-Auth-Token': API_KEY }
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=86400)
 def get_recent_points(team_id):
     url = f"https://api.football-data.org/v4/teams/{team_id}/matches?status=FINISHED&limit=5"
     response = requests.get(url, headers=headers)
@@ -43,7 +43,7 @@ def get_recent_points(team_id):
             points += 3
     return float(points)
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=86400)
 def get_upcoming_matches_api():
     url = "https://api.football-data.org/v4/competitions/PL/matches?status=SCHEDULED"
     response = requests.get(url, headers=headers)
@@ -54,7 +54,7 @@ def get_upcoming_matches_api():
     # 試合データの中にエンブレムのURLが含まれているので、そのまま返せばOKです
     return data.get('matches', [])
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=86400)
 def get_standings_api():
     # URLはそのままですが、データの取り出し方をより堅牢にします
     url = "https://api.football-data.org/v4/competitions/PL/standings"
@@ -68,7 +68,7 @@ def get_standings_api():
         print(f"Error fetching standings: {e}")
         return []
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=86400)
 def get_top_scorers_api():
     # プレミアリーグ(PL)の得点者・アシスト者データを取得
     url = "https://api.football-data.org/v4/competitions/PL/scorers"
@@ -78,7 +78,7 @@ def get_top_scorers_api():
     # APIから選手データのリストを返す
     return response.json().get('scorers', [])
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=86400)
 def get_team_form_api(team_id):
     # 特定のチームの直近5試合の完了済み試合を取得
     url = f"https://api.football-data.org/v4/teams/{team_id}/matches?status=FINISHED&limit=5"

@@ -56,10 +56,17 @@ def get_upcoming_matches_api():
 
 @st.cache_data(ttl=3600)
 def get_standings_api():
+    # URLはそのままですが、データの取り出し方をより堅牢にします
     url = "https://api.football-data.org/v4/competitions/PL/standings"
-    response = requests.get(url, headers=headers)
-    if response.status_code != 200: return []
-    return response.json().get('standings', [{}])[0].get('table', [])
+    try:
+        response = requests.get(url, headers=headers)
+        if response.status_code != 200:
+            return []
+        data = response.json()
+        return data.get('standings', [{}])[0].get('table', [])
+    except Exception as e:
+        print(f"Error fetching standings: {e}")
+        return []
 
 @st.cache_data(ttl=3600)
 def get_top_scorers_api():
@@ -70,6 +77,31 @@ def get_top_scorers_api():
         return []
     # APIから選手データのリストを返す
     return response.json().get('scorers', [])
+
+@st.cache_data(ttl=3600)
+def get_team_form_api(team_id):
+    # 特定のチームの直近5試合の完了済み試合を取得
+    url = f"https://api.football-data.org/v4/teams/{team_id}/matches?status=FINISHED&limit=5"
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        return "-"
+    
+    matches = response.json().get('matches', [])
+    form_list = []
+    
+    # 取得した試合を時系列（最新が右）に並べるために、古い順から処理
+    for m in reversed(matches):
+        is_home = m['homeTeam']['id'] == team_id
+        winner = m['score']['winner']
+        
+        if winner == 'DRAW':
+            form_list.append("D")
+        elif (winner == 'HOME_TEAM' and is_home) or (winner == 'AWAY_TEAM' and not is_home):
+            form_list.append("W")
+        else:
+            form_list.append("L")
+            
+    return " ".join(form_list) if form_list else "-"
 
 # ...（中略）
 if not API_KEY:

@@ -6,7 +6,7 @@ import torch
 import joblib
 import pandas as pd
 from model import SoccerPredictor
-from utils import get_recent_points, get_upcoming_matches_api, get_standings_api, get_top_scorers_api
+from utils import get_recent_points, get_upcoming_matches_api, get_standings_api, get_top_scorers_api, get_team_form_api
 st.set_page_config(page_title="Premier Predictor", page_icon="⚽")
 st.title("⚽ Premier League AI Predictor")
 
@@ -70,16 +70,21 @@ with tab1:
             except KeyError:
                 continue
 
+# app.py の Tab 2 部分
 with tab2:
     st.subheader("📊 Premier League Standings")
     standings = get_standings_api()
     if standings:
         table_data = []
-        for s in standings:  # ← このループの中に s が存在します
-            # ここから下の行は、必ず上の for より右側に字下げしてください
-            recent_form = s.get('form', '-')
-            if recent_form is None: 
-                recent_form = '-'
+        # プログレスバー（読み込み中）を出すと親切です
+        progress_text = "戦績を取得中..."
+        my_bar = st.progress(0, text=progress_text)
+        
+        for i, s in enumerate(standings):
+            team_id = s['team']['id']
+            # 各チームの直近5試合の戦績を取得
+            # 注意：API制限(1分10回)に当たりやすいため、本来はここもキャッシュすべきです
+            recent_form = get_team_form_api(team_id)
             
             table_data.append({
                 "順位": s['position'],
@@ -88,16 +93,15 @@ with tab2:
                 "勝": s['won'],
                 "分": s['draw'],
                 "負": s['lost'],
-                "得点": s['goalsFor'],
-                "失点": s['goalsAgainst'],
-                "差": s['goalDifference'],
                 "点": s['points'],
-                "直近5試合": recent_form
+                "直近5試合": recent_form # ここに生成したW D Lを入れる
             })
+            my_bar.progress((i + 1) / len(standings), text=progress_text)
         
-        # データの表示（ループの外に出すので、for と同じ縦位置に揃える）
+        my_bar.empty() # プログレスバーを消す
         df_standings = pd.DataFrame(table_data)
-        st.dataframe(df_standings, hide_index=True, use_container_width=True)
+        st.dataframe(df_standings, hide_index=True, use_container_width=True)      
+
 # --- Tab 3: 得点ランキング ---
 with tab3:
     st.subheader("🏆 Player Stats Ranking")

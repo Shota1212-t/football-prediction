@@ -6,14 +6,12 @@ import torch
 import joblib
 import pandas as pd
 from model import SoccerPredictor
-from utils import get_recent_points, get_upcoming_matches_api
-
+from utils import get_recent_points, get_upcoming_matches_api, get_standings_api, get_top_scorers_api
 st.set_page_config(page_title="Premier Predictor", page_icon="⚽")
 st.title("⚽ Premier League AI Predictor")
 
 # 1. タブの作成（機能3）
-tab1, tab2 = st.tabs(["🔥 試合予測", "📊 リーグ順位表（準備中）"])
-
+tab1, tab2, tab3 = st.tabs(["🔥 試合予測", "📊 順位表", "🏆 選手ランキング"])
 @st.cache_resource
 def load_assets():
     model = SoccerPredictor(6)
@@ -73,4 +71,72 @@ with tab1:
                 continue
 
 with tab2:
-    st.info("順位表機能は近日公開予定！APIからデータを取得してここに表示できます。")
+    st.subheader("📊 Premier League Standings")
+    standings = get_standings_api()
+    if standings:
+        table_data = []
+        for s in standings:  # ← このループの中に s が存在します
+            # ここから下の行は、必ず上の for より右側に字下げしてください
+            recent_form = s.get('form', '-')
+            if recent_form is None: 
+                recent_form = '-'
+            
+            table_data.append({
+                "順位": s['position'],
+                "チーム": s['team']['name'],
+                "試合": s['playedGames'],
+                "勝": s['won'],
+                "分": s['draw'],
+                "負": s['lost'],
+                "得点": s['goalsFor'],
+                "失点": s['goalsAgainst'],
+                "差": s['goalDifference'],
+                "点": s['points'],
+                "直近5試合": recent_form
+            })
+        
+        # データの表示（ループの外に出すので、for と同じ縦位置に揃える）
+        df_standings = pd.DataFrame(table_data)
+        st.dataframe(df_standings, hide_index=True, use_container_width=True)
+# --- Tab 3: 得点ランキング ---
+with tab3:
+    st.subheader("🏆 Player Stats Ranking")
+    scorers = get_top_scorers_api()
+    
+    if scorers:
+        all_stats = []
+        for s in scorers:
+            # 安全にデータを取得（キーがない場合に備える）
+            p_name = s['player']['name']
+            t_name = s['team']['name']
+            goals = s.get('goals', 0)
+            assists = s.get('assists', 0) if s.get('assists') else 0
+            
+            all_stats.append({
+                "選手名": p_name,
+                "チーム": t_name,
+                "得点": goals,
+                "アシスト": assists,
+                "G+A": goals + assists,
+                "出場試合": s.get('playedMatches', 0)
+            })
+        
+        df_scorers = pd.DataFrame(all_stats)
+
+        # ランキングの切り替え
+        stat_choice = st.radio(
+            "ランキング項目を選択:",
+            ["得点", "アシスト", "G+A"],
+            horizontal=True
+        )
+
+        # 選択された項目でソートして、上位20人を抽出
+        df_sorted = df_scorers.sort_values(by=stat_choice, ascending=False).head(20)
+        
+        # 順位列を一番左に追加
+        df_sorted.insert(0, '順位', range(1, len(df_sorted) + 1))
+
+        # インデックス（0, 1...）を隠して表示
+        st.dataframe(df_sorted, hide_index=True, use_container_width=True)
+    else:
+        st.warning("選手データを取得できませんでした。1分ほど待ってから再読み込みしてください。")

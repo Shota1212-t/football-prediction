@@ -1,8 +1,7 @@
-torch
-torchvision
+streamlit
 pandas
-scikit-learn
 requests
 python-dotenv
+torch
 joblib
-streamlit
+scikit-learn

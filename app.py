@@ -82,67 +82,75 @@ with tab1:
 with tab2:
     st.subheader("📊 Premier League Standings")
     
-    # 順位表データの読み込み
-    df_standings = pd.read_csv('standings_data.csv')
+    # 1. データの読み込み
+    try:
+        df_standings = pd.read_csv('standings_data.csv')
+    except Exception as e:
+        st.error(f"CSVファイルの読み込みに失敗しました: {e}")
+        st.stop()
     
-    # チームを選択できるようにする（Selection機能）
+    # 2. 順位表の表示（最新のハイフン形式 selection_mode）
+    # これで「チーム名」の部分がクリック（選択）できるようになります
     event = st.dataframe(
         df_standings,
-        on_select="rerun", # 選択したら再実行
-        #selection_mode=["single_row"], # 1行だけ選択
+        on_select="rerun",
+        selection_mode="single-row", # アンダースコア(_)ではなくハイフン(-)
         hide_index=True,
         use_container_width=True
     )
 
-    # チームが選択された時の処理
-    if len(event.selection.rows) > 0:
-        selected_row = event.selection.rows[0]
-        team_name = df_standings.iloc[selected_row]['チーム']
-        # チームIDを特定（IDもCSVに入れておく必要があります）
-        team_id = df_standings.iloc[selected_row]['id'] 
+    # 3. チームが選択された時の処理
+    if event.selection.rows:
+        selected_row_index = event.selection.rows[0]
+        
+        # CSVの列名を確認しながらデータを取得
+        try:
+            # もし 'id' という列名がない場合のために .get を使うか、直接指定
+            team_id = df_standings.iloc[selected_row_index]['id']
+            team_name = df_standings.iloc[selected_row_index]['チーム']
+        except KeyError:
+            st.warning("CSVに 'id' 列が見つかりません。順位表データを更新するか、CSVを確認してください。")
+            st.stop()
 
         st.divider()
-        st.subheader(f"🛡️ {team_name} の詳細情報")
+        st.subheader(f"🛡️ {team_name} の詳細")
 
-        # APIから詳細を取得（キャッシュ機能を挟むのが理想）
-        team_data = get_team_details_api(team_id)
-
-        if team_data:
-            # 1. 監督情報の表示
-            coach = team_data.get('coach', {})
-            st.write(f"**監督:** {coach.get('name', '不明')} ({coach.get('nationality', '-')})")
-
-            # 2. 選手一覧の表示（クリック可能にするために、ここもdataframeにする）
-            squad = []
-            for p in team_data.get('squad', []):
-                squad.append({
-                    "名前": p['name'],
-                    "ポジション": p['position'],
-                    "国籍": p['nationality'],
-                    "ID": p['id']
-                })
+        # utils.pyで作った関数でAPIから詳細（選手一覧など）を取得
+        with st.spinner('データを取得中...'):
+            detail = get_team_details_api(team_id)
+        
+        if detail:
+            # 監督情報
+            coach_name = detail.get('coach', {}).get('name', '情報なし')
+            st.info(f"👤 **監督**: {coach_name}")
             
-            df_squad = pd.DataFrame(squad)
-            st.write("### 選手一覧")
-            player_event = st.dataframe(
-                df_squad,
-                on_select="rerun",
-                #selection_mode=["single_row"],
-                hide_index=True
-            )
-
-            # 3. 選手が選択されたら、その人の詳細（APIから取れる全情報）を出す
-            if len(player_event.selection.rows) > 0:
-                p_idx = player_event.selection.rows[0]
-                p_name = df_squad.iloc[p_idx]['名前']
+            # 選手一覧のデータフレーム作成
+            players = detail.get('squad', [])
+            if players:
+                st.write("### 📋 選手一覧")
+                st.write("名前を選択すると、APIから取得できる全詳細データを確認できます。")
                 
-                # APIのsquadデータから該当選手を探す
-                p_detail = next(item for item in team_data['squad'] if item["name"] == p_name)
+                df_squad = pd.DataFrame(players)[['name', 'position', 'nationality', 'dateOfBirth']]
+                df_squad.columns = ['選手名', 'ポジション', '国籍', '生年月日']
                 
-                with st.expander(f"👤 {p_name} の個人データ", expanded=True):
-                    # APIから取れる情報をすべて書き出す
-                    for key, value in p_detail.items():
-                        st.write(f"**{key}:** {value}")
+                # 選手選択用のデータフレーム
+                p_event = st.dataframe(
+                    df_squad,
+                    on_select="rerun",
+                    selection_mode="single-row",
+                    hide_index=True,
+                    use_container_width=True
+                )
+                
+                # 4. 選手が選択されたら全情報をJSONで表示
+                if p_event.selection.rows:
+                    p_idx = p_event.selection.rows[0]
+                    selected_player_all_data = players[p_idx]
+                    
+                    with st.expander(f"🔍 {selected_player_all_data['name']} の全データ", expanded=True):
+                        st.json(selected_player_all_data)
+            else:
+                st.write("選手情報が見つかりませんでした。")
 
 # --- Tab 3: 得点ランキング ---
 with tab3:

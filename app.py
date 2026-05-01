@@ -74,41 +74,16 @@ with tab1:
 with tab2:
     st.subheader("📊 Premier League Standings")
     
-    # セッション状態を使って、ボタンを押すまでデータを保持する
-    if 'standings_data' not in st.session_state:
-        st.session_state.standings_data = None
+    # APIを叩かずに、ローカルで作成したCSVファイルを読み込む
+    csv_file = 'standings_data.csv'
 
-    if st.button('順位表と戦績を最新にする（APIを消費します）'):
-        with st.spinner('データを取得中...'):
-            standings = get_standings_api()
-            if standings:
-                table_data = []
-                # API制限を考慮し、上位10チームに絞る
-                for s in standings[:8]: 
-                    team_id = s['team']['id']
-                    recent_form = get_team_form_api(team_id)
-                    
-                    # もしAPI制限で取得できなかったら "-" にする
-                    if recent_form is None:
-                        recent_form = "-"
-                        
-                    table_data.append({
-                        "順位": s['position'],
-                        "チーム": s['team']['name'],
-                        "試合": s['playedGames'],
-                        "勝": s['won'],
-                        "分": s['draw'],
-                        "負": s['lost'],
-                        "点": s['points'],
-                        "直近5試合": recent_form
-                    })
-                st.session_state.standings_data = pd.DataFrame(table_data)
-
-    # 取得済みのデータがあれば表示
-    if st.session_state.standings_data is not None:
-        st.dataframe(st.session_state.standings_data, hide_index=True, use_container_width=True)
+    if os.path.exists(csv_file):
+        # CSVから読み込む（API制限を気にせず一瞬で表示！）
+        df_standings = pd.read_csv(csv_file)
+        st.dataframe(df_standings, hide_index=True, use_container_width=True)
+        st.caption("※データはローカルで更新された最新の固定データを表示しています。")
     else:
-        st.info("「最新にする」ボタンを押すと順位表が表示されます。")
+        st.info("現在、順位表データを準備中です。ローカルで 'save_standings.py' を実行してください。")
 
 # --- Tab 3: 得点ランキング ---
 with tab3:

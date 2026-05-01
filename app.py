@@ -82,6 +82,15 @@ with tab1:
 with tab2:
     st.subheader("📊 Premier League Standings")
     
+    if st.button('順位表データを更新'):
+        with st.spinner('最新の順位表を取得中...'):
+            standings_data = get_standings_api() # utils.pyで修正した、IDを含むリストが返ってくる
+            if standings_data:
+                df_new = pd.DataFrame(standings_data)
+                df_new.to_csv('standings_data.csv', index=False)
+                st.success("順位表を更新しました！(ID情報も保存されました)")
+                st.rerun() # 画面を再読み込みしてCSVを読み直す
+
     # 1. データの読み込み
     try:
         df_standings = pd.read_csv('standings_data.csv')

@@ -56,14 +56,29 @@ def get_upcoming_matches_api():
 
 @st.cache_data(ttl=86400)
 def get_standings_api():
-    # URLはそのままですが、データの取り出し方をより堅牢にします
     url = "https://api.football-data.org/v4/competitions/PL/standings"
     try:
         response = requests.get(url, headers=headers)
         if response.status_code != 200:
             return []
+        
         data = response.json()
-        return data.get('standings', [{}])[0].get('table', [])
+        table = data.get('standings', [{}])[0].get('table', [])
+        
+        # --- ここから修正：必要な情報を整理して抽出する ---
+        all_data = []
+        for item in table:
+            all_data.append({
+                "id": item['team']['id'],        # これが詳細表示に不可欠なIDです
+                "順位": item['position'],
+                "チーム": item['team']['name'],
+                "勝ち点": item['points'],
+                "試合数": item['playedGames'],
+                "得失点": item['goalDifference']
+            })
+        return all_data
+        # ----------------------------------------------
+        
     except Exception as e:
         print(f"Error fetching standings: {e}")
         return []

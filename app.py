@@ -6,7 +6,7 @@ import torch
 import joblib
 import pandas as pd
 from model import SoccerPredictor
-from utils import get_recent_points, get_upcoming_matches_api, get_standings_api, get_top_scorers_api, get_team_form_api
+from utils import get_recent_points, get_upcoming_matches_api, get_standings_api, get_top_scorers_api, get_team_form_api, get_team_details_api
 st.set_page_config(page_title="Premier Predictor", page_icon="⚽")
 st.title("⚽ Premier League AI Predictor")
 

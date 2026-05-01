@@ -65,6 +65,14 @@ with tab1:
                     c1.metric("HOME Win", f"{prob[0][0]*100:.1f}%")
                     c2.metric("DRAW", f"{prob[0][1]*100:.1f}%")
                     c3.metric("AWAY Win", f"{prob[0][2]*100:.1f}%")
+                    
+                    match_query = f"{home_name} vs {away_name}"
+                    st.link_button(
+                        label=f"🔍 {match_query} のニュースや対戦成績を調べる",
+                        url=f"https://www.google.com/search?q={match_query.replace(' ', '+')}",
+                        use_container_width=True
+                    )
+                    
                     st.divider()
                     
             except KeyError:
@@ -74,16 +82,32 @@ with tab1:
 with tab2:
     st.subheader("📊 Premier League Standings")
     
-    # APIを叩かずに、ローカルで作成したCSVファイルを読み込む
     csv_file = 'standings_data.csv'
 
     if os.path.exists(csv_file):
-        # CSVから読み込む（API制限を気にせず一瞬で表示！）
         df_standings = pd.read_csv(csv_file)
-        st.dataframe(df_standings, hide_index=True, use_container_width=True)
-        st.caption("※データはローカルで更新された最新の固定データを表示しています。")
+
+        # 1. Google検索用のURLを作成する
+        # 「https://www.google.com/search?q=チーム名」という形式にします
+        df_standings['詳細'] = "https://www.google.com/search?q=" + df_standings['チーム']
+
+        # 2. LinkColumnを使って、URLをクリック可能な「検索」ボタンのように見せる
+        st.dataframe(
+            df_standings,
+            column_config={
+                "詳細": st.column_config.LinkColumn(
+                    "Googleで検索",  # 列のヘッダー名
+                    help="クリックするとGoogle検索を開きます",
+                    display_text="🔍 調べる" # セルに表示するテキスト
+                ),
+            },
+            hide_index=True,
+            use_container_width=True
+        )
+        
+        st.caption("※チーム名横の「調べる」を押すと、最新ニュースや選手情報を検索できます。")
     else:
-        st.info("現在、順位表データを準備中です。ローカルで 'save_standings.py' を実行してください。")
+        st.info("データファイルを準備中です。")
 
 # --- Tab 3: 得点ランキング ---
 with tab3:
@@ -93,7 +117,6 @@ with tab3:
     if scorers:
         all_stats = []
         for s in scorers:
-            # 安全にデータを取得（キーがない場合に備える）
             p_name = s['player']['name']
             t_name = s['team']['name']
             goals = s.get('goals', 0)
@@ -105,25 +128,33 @@ with tab3:
                 "得点": goals,
                 "アシスト": assists,
                 "G+A": goals + assists,
-                "出場試合": s.get('playedMatches', 0)
+                "出場試合": s.get('playedMatches', 0),
+                # 検索用URLを作成（選手名 + チーム名 で検索精度を上げる）
+                "詳細": f"https://www.google.com/search?q={p_name.replace(' ', '+')}+{t_name.replace(' ', '+')}"
             })
         
         df_scorers = pd.DataFrame(all_stats)
 
-        # ランキングの切り替え
         stat_choice = st.radio(
             "ランキング項目を選択:",
             ["得点", "アシスト", "G+A"],
             horizontal=True
         )
 
-        # 選択された項目でソートして、上位20人を抽出
         df_sorted = df_scorers.sort_values(by=stat_choice, ascending=False).head(20)
-        
-        # 順位列を一番左に追加
         df_sorted.insert(0, '順位', range(1, len(df_sorted) + 1))
 
-        # インデックス（0, 1...）を隠して表示
-        st.dataframe(df_sorted, hide_index=True, use_container_width=True)
+        # --- 表示設定の変更 ---
+        st.dataframe(
+            df_sorted,
+            column_config={
+                "詳細": st.column_config.LinkColumn(
+                    "情報",
+                    display_text="🔍 調べる"
+                ),
+            },
+            hide_index=True, 
+            use_container_width=True
+        )
     else:
         st.warning("選手データを取得できませんでした。1分ほど待ってから再読み込みしてください。")

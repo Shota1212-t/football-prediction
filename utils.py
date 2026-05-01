@@ -123,7 +123,7 @@ def get_team_form_api(team_id):
 @st.cache_data(ttl=3600)
 def get_team_details_api(team_id):
     # 【重要】YOUR_API_KEY を自分のトークンに書き換えてください
-    headers = {'X-Auth-Token': 'YOUR_API_KEY'} 
+    headers = {'X-Auth-Token':'YOUR_API_KEY'} 
     url = f"https://api.football-data.org/v4/teams/{team_id}"
     
     try:

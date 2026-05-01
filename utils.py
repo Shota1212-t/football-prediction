@@ -122,15 +122,16 @@ def get_team_form_api(team_id):
 # utils.py
 @st.cache_data(ttl=3600)
 def get_team_details_api(team_id):
+    # 【重要】YOUR_API_KEY を自分のトークンに書き換えてください
+    headers = {'X-Auth-Token': 'YOUR_API_KEY'} 
     url = f"https://api.football-data.org/v4/teams/{team_id}"
-    headers = {'X-Auth-Token': 'あなたのAPIキー'}
+    
     try:
         response = requests.get(url, headers=headers)
-        data = response.json()
-        # デバッグ用に中身を少しログに出す（Streamlitのターミナルで確認用）
-        print(f"Fetched data for team {team_id}")
-        return data
+        # ステータスコードが 200 (成功) 以外でも、エラー内容を把握するためにjsonを返す
+        return response.json()
     except Exception as e:
+        print(f"Error: {e}")
         return None
 
 

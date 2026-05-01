@@ -82,28 +82,30 @@ with tab1:
 with tab2:
     st.subheader("📊 Premier League Standings")
     
+    # --- 順位表更新ボタン ---
     if st.button('順位表データを更新'):
         with st.spinner('最新の順位表を取得中...'):
-            standings_data = get_standings_api() # utils.pyで修正した、IDを含むリストが返ってくる
+            standings_data = get_standings_api()
             if standings_data:
                 df_new = pd.DataFrame(standings_data)
                 df_new.to_csv('standings_data.csv', index=False)
                 st.success("順位表を更新しました！(ID情報も保存されました)")
-                st.rerun() # 画面を再読み込みしてCSVを読み直す
+                st.rerun()
+            else:
+                st.error("順位表の取得に失敗しました。API制限(1分10回)の可能性があります。")
 
-    # 1. データの読み込み
+    # 1. CSV読み込み
     try:
         df_standings = pd.read_csv('standings_data.csv')
     except Exception as e:
-        st.error(f"CSVファイルの読み込みに失敗しました: {e}")
+        st.error(f"CSVファイルの読み込みに失敗しました。'順位表データを更新' を押してください。")
         st.stop()
     
-    # 2. 順位表の表示（最新のハイフン形式 selection_mode）
-    # これで「チーム名」の部分がクリック（選択）できるようになります
+    # 2. 順位表の表示
     event = st.dataframe(
         df_standings,
         on_select="rerun",
-        selection_mode="single-row", # アンダースコア(_)ではなくハイフン(-)
+        selection_mode="single-row",
         hide_index=True,
         use_container_width=True
     )
@@ -112,42 +114,35 @@ with tab2:
     if event.selection.rows:
         selected_row_index = event.selection.rows[0]
         
-        # CSVの列名を確認しながらデータを取得
         try:
-            # もし 'id' という列名がない場合のために .get を使うか、直接指定
             team_id = df_standings.iloc[selected_row_index]['id']
             team_name = df_standings.iloc[selected_row_index]['チーム']
         except KeyError:
-            st.warning("CSVに 'id' 列が見つかりません。順位表データを更新するか、CSVを確認してください。")
+            st.warning("CSVに 'id' 列が見つかりません。一度 '順位表データを更新' を押してください。")
             st.stop()
 
         st.divider()
         st.subheader(f"🛡️ {team_name} の詳細")
 
-        # utils.pyで作った関数でAPIから詳細（選手一覧など）を取得
-        with st.spinner('データを取得中...'):
+        # --- 取得処理の見える化 ---
+        with st.spinner(f'{team_name} のデータをAPIから取得中...'):
             detail = get_team_details_api(team_id)
         
-        if detail:
-            # 【デバッグ用】これを入れると、APIから届いた生データが全部画面に出ます
-            # st.write("デバッグデータ:", detail) 
-
+        if detail is None:
+            st.error("APIから応答がありません。ネットワークかAPIキーの設定を確認してください。")
+        elif "message" in detail: # APIからのエラーメッセージ（制限超えなど）がある場合
+            st.error(f"APIエラー: {detail['message']}")
+        else:
+            # 正常に取れた場合の表示
             coach = detail.get('coach', {})
             st.info(f"👤 **監督**: {coach.get('name', '情報なし')}")
             
-            # squad（選手一覧）が辞書ではなくリストで入っているか確認
-            players = detail.get('squad', [])
-            
-            # 選手一覧のデータフレーム作成
             players = detail.get('squad', [])
             if players:
                 st.write("### 📋 選手一覧")
-                st.write("名前を選択すると、APIから取得できる全詳細データを確認できます。")
-                
                 df_squad = pd.DataFrame(players)[['name', 'position', 'nationality', 'dateOfBirth']]
                 df_squad.columns = ['選手名', 'ポジション', '国籍', '生年月日']
                 
-                # 選手選択用のデータフレーム
                 p_event = st.dataframe(
                     df_squad,
                     on_select="rerun",
@@ -156,16 +151,11 @@ with tab2:
                     use_container_width=True
                 )
                 
-                # 4. 選手が選択されたら全情報をJSONで表示
                 if p_event.selection.rows:
                     p_idx = p_event.selection.rows[0]
-                    selected_player_all_data = players[p_idx]
-                    
-                    with st.expander(f"🔍 {selected_player_all_data['name']} の全データ", expanded=True):
-                        st.json(selected_player_all_data)
+                    st.json(players[p_idx])
             else:
-                st.write("選手情報が見つかりませんでした。")
-
+                st.warning("このチームの選手情報(squad)がAPIから返されませんでした。")
 # --- Tab 3: 得点ランキング ---
 with tab3:
     st.subheader("🏆 Player Stats Ranking")

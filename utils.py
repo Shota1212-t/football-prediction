@@ -119,14 +119,18 @@ def get_team_form_api(team_id):
     return " ".join(form_list) if form_list else "-"
 
 @st.cache_data(ttl=86400)
+# utils.py
+@st.cache_data(ttl=3600)
 def get_team_details_api(team_id):
-    """特定のチームの選手一覧と監督情報を取得する"""
     url = f"https://api.football-data.org/v4/teams/{team_id}"
     headers = {'X-Auth-Token': 'あなたのAPIキー'}
     try:
         response = requests.get(url, headers=headers)
-        return response.json()
-    except:
+        data = response.json()
+        # デバッグ用に中身を少しログに出す（Streamlitのターミナルで確認用）
+        print(f"Fetched data for team {team_id}")
+        return data
+    except Exception as e:
         return None
 
 

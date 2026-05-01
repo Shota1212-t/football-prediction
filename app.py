@@ -129,9 +129,14 @@ with tab2:
             detail = get_team_details_api(team_id)
         
         if detail:
-            # 監督情報
-            coach_name = detail.get('coach', {}).get('name', '情報なし')
-            st.info(f"👤 **監督**: {coach_name}")
+            # 【デバッグ用】これを入れると、APIから届いた生データが全部画面に出ます
+            # st.write("デバッグデータ:", detail) 
+
+            coach = detail.get('coach', {})
+            st.info(f"👤 **監督**: {coach.get('name', '情報なし')}")
+            
+            # squad（選手一覧）が辞書ではなくリストで入っているか確認
+            players = detail.get('squad', [])
             
             # 選手一覧のデータフレーム作成
             players = detail.get('squad', [])

@@ -82,32 +82,67 @@ with tab1:
 with tab2:
     st.subheader("📊 Premier League Standings")
     
-    csv_file = 'standings_data.csv'
+    # 順位表データの読み込み
+    df_standings = pd.read_csv('standings_data.csv')
+    
+    # チームを選択できるようにする（Selection機能）
+    event = st.dataframe(
+        df_standings,
+        on_select="rerun", # 選択したら再実行
+        selection_mode="single_row", # 1行だけ選択
+        hide_index=True,
+        use_container_width=True
+    )
 
-    if os.path.exists(csv_file):
-        df_standings = pd.read_csv(csv_file)
+    # チームが選択された時の処理
+    if len(event.selection.rows) > 0:
+        selected_row = event.selection.rows[0]
+        team_name = df_standings.iloc[selected_row]['チーム']
+        # チームIDを特定（IDもCSVに入れておく必要があります）
+        team_id = df_standings.iloc[selected_row]['id'] 
 
-        # 1. Google検索用のURLを作成する
-        # 「https://www.google.com/search?q=チーム名」という形式にします
-        df_standings['詳細'] = "https://www.google.com/search?q=" + df_standings['チーム']
+        st.divider()
+        st.subheader(f"🛡️ {team_name} の詳細情報")
 
-        # 2. LinkColumnを使って、URLをクリック可能な「検索」ボタンのように見せる
-        st.dataframe(
-            df_standings,
-            column_config={
-                "詳細": st.column_config.LinkColumn(
-                    "Googleで検索",  # 列のヘッダー名
-                    help="クリックするとGoogle検索を開きます",
-                    display_text="🔍 調べる" # セルに表示するテキスト
-                ),
-            },
-            hide_index=True,
-            use_container_width=True
-        )
-        
-        st.caption("※チーム名横の「調べる」を押すと、最新ニュースや選手情報を検索できます。")
-    else:
-        st.info("データファイルを準備中です。")
+        # APIから詳細を取得（キャッシュ機能を挟むのが理想）
+        team_data = get_team_details_api(team_id)
+
+        if team_data:
+            # 1. 監督情報の表示
+            coach = team_data.get('coach', {})
+            st.write(f"**監督:** {coach.get('name', '不明')} ({coach.get('nationality', '-')})")
+
+            # 2. 選手一覧の表示（クリック可能にするために、ここもdataframeにする）
+            squad = []
+            for p in team_data.get('squad', []):
+                squad.append({
+                    "名前": p['name'],
+                    "ポジション": p['position'],
+                    "国籍": p['nationality'],
+                    "ID": p['id']
+                })
+            
+            df_squad = pd.DataFrame(squad)
+            st.write("### 選手一覧")
+            player_event = st.dataframe(
+                df_squad,
+                on_select="rerun",
+                selection_mode="single_row",
+                hide_index=True
+            )
+
+            # 3. 選手が選択されたら、その人の詳細（APIから取れる全情報）を出す
+            if len(player_event.selection.rows) > 0:
+                p_idx = player_event.selection.rows[0]
+                p_name = df_squad.iloc[p_idx]['名前']
+                
+                # APIのsquadデータから該当選手を探す
+                p_detail = next(item for item in team_data['squad'] if item["name"] == p_name)
+                
+                with st.expander(f"👤 {p_name} の個人データ", expanded=True):
+                    # APIから取れる情報をすべて書き出す
+                    for key, value in p_detail.items():
+                        st.write(f"**{key}:** {value}")
 
 # --- Tab 3: 得点ランキング ---
 with tab3:

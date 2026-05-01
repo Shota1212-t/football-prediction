@@ -103,7 +103,18 @@ def get_team_form_api(team_id):
             
     return " ".join(form_list) if form_list else "-"
 
-# ...（中略）
+@st.cache_data(ttl=86400)
+def get_team_details_api(team_id):
+    """特定のチームの選手一覧と監督情報を取得する"""
+    url = f"https://api.football-data.org/v4/teams/{team_id}"
+    headers = {'X-Auth-Token': 'あなたのAPIキー'}
+    try:
+        response = requests.get(url, headers=headers)
+        return response.json()
+    except:
+        return None
+
+
 if not API_KEY:
     API_KEY = os.getenv('FOOTBALL_API_KEY')
 

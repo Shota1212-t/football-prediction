@@ -89,7 +89,7 @@ with tab2:
     event = st.dataframe(
         df_standings,
         on_select="rerun", # 選択したら再実行
-        selection_mode="single_row", # 1行だけ選択
+        selection_mode=["single_row"], # 1行だけ選択
         hide_index=True,
         use_container_width=True
     )
@@ -127,7 +127,7 @@ with tab2:
             player_event = st.dataframe(
                 df_squad,
                 on_select="rerun",
-                selection_mode="single_row",
+                selection_mode=["single_row"],
                 hide_index=True
             )
 

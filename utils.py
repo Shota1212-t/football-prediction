@@ -54,36 +54,32 @@ def get_upcoming_matches_api():
     # 試合データの中にエンブレムのURLが含まれているので、そのまま返せばOKです
     return data.get('matches', [])
 
-@st.cache_data(ttl=86400)
+@st.cache_data(ttl=3600)
 def get_standings_api():
     url = "https://api.football-data.org/v4/competitions/PL/standings"
     try:
         response = requests.get(url, headers=headers)
         if response.status_code != 200:
             return []
-        
         data = response.json()
         table = data.get('standings', [{}])[0].get('table', [])
         
-        # --- ここから修正：必要な情報を整理して抽出する ---
         all_data = []
         for item in table:
             all_data.append({
-                "id": item['team']['id'],        # これが詳細表示に不可欠なIDです
+                "id": item['team']['id'],
                 "順位": item['position'],
                 "チーム": item['team']['name'],
                 "試合数": item['playedGames'],
-                "勝": item['won'],      # 追加
-                "分": item['draw'],     # 追加
-                "負": item['lost'],     # 追加
+                "勝": item['won'],
+                "分": item['draw'],
+                "負": item['lost'],
                 "得失点": item['goalDifference'],
                 "勝ち点": item['points']
             })
         return all_data
-        # ----------------------------------------------
-        
     except Exception as e:
-        print(f"Error fetching standings: {e}")
+        st.error(f"API取得エラー: {e}")
         return []
 
 @st.cache_data(ttl=86400)
@@ -123,18 +119,11 @@ def get_team_form_api(team_id):
 
 @st.cache_data(ttl=3600)
 def get_team_details_api(team_id):
-    """
-    指定したチームの詳細情報（監督・選手名簿）を取得します
-    """
     url = f"https://api.football-data.org/v4/teams/{team_id}"
     try:
-        # ファイル上部で定義済みの headers をそのまま使用
         response = requests.get(url, headers=headers)
-        if response.status_code != 200:
-            return None
         return response.json()
     except Exception as e:
-        print(f"Error: {e}")
         return None
 
 if not API_KEY:

@@ -120,16 +120,11 @@ def get_team_form_api(team_id):
 
 @st.cache_data(ttl=3600)
 def get_team_details_api(team_id):
-    # 【重要】必ず自分のトークンを ' ' の中に入れてください
-    # 前後に余計なスペースが入らないように注意！
-    my_token = 'FOOTBALL_API_KEY' 
-    
-    headers = {'X-Auth-Token': my_token}
+    # ファイルの上の方で作った共通の headers をそのまま使います！
     url = f"https://api.football-data.org/v4/teams/{team_id}"
     
     try:
         response = requests.get(url, headers=headers)
-        # 届いたデータが200(成功)でもエラーでも、中身をJSONとして返す
         return response.json()
     except Exception as e:
         print(f"Error fetching team details: {e}")

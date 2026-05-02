@@ -3,6 +3,8 @@
 
 Football-Data.org APIと連携し、プレミアリーグの順位表表示、および各チームのスカッド情報を瞬時に取得・表示するWebアプリケーションです。
 
+### ライブデモ
+**[アプリをブラウザで開く](https://football-prediction-kluuahgskkiv773eiqhdvy.streamlit.app/)**
 
 ## Features
 *   **リアルタイム順位表**: 最新の勝ち点、勝敗数、得失点差を一覧表示。

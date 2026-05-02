@@ -72,9 +72,12 @@ def get_standings_api():
                 "id": item['team']['id'],        # これが詳細表示に不可欠なIDです
                 "順位": item['position'],
                 "チーム": item['team']['name'],
-                "勝ち点": item['points'],
                 "試合数": item['playedGames'],
-                "得失点": item['goalDifference']
+                "勝": item['won'],      # 追加
+                "分": item['draw'],     # 追加
+                "負": item['lost'],     # 追加
+                "得失点": item['goalDifference'],
+                "勝ち点": item['points']
             })
         return all_data
         # ----------------------------------------------

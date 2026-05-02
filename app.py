@@ -80,95 +80,69 @@ with tab1:
 
 # app.py の with tab2: ブロックをこの内容に丸ごと入れ替えてください
 with tab2:
-    st.header("📊 リーグ順位表 & チーム分析")
+    st.header("📊 プレミアリーグ順位表")
     
-    # 1. 順位表データの読み込み（なければ安全装置が発動）
+    # 1. データの読み込み
     try:
         df_standings = pd.read_csv('standings_data.csv')
-        if 'id' not in df_standings.columns:
-            st.warning("⚠️ 順位表のデータが古いです。下のボタンで最新化してください。")
-            df_standings = None
-    except FileNotFoundError:
-        st.warning("⚠️ 順位表のデータがありません。下のボタンで取得してください。")
+    except:
+        st.warning("順位表データがありません。下のボタンで取得してください。")
         df_standings = None
 
-    # 更新ボタン（いつでもデータを最新にできる機能）
-    if st.button('🔄 順位表データを最新にする'):
-        with st.spinner('APIから最新データを取得中...'):
+    if st.button('🔄 データを最新にする', key="update_btn"):
+        with st.spinner('更新中...'):
             new_data = get_standings_api()
             if new_data:
                 pd.DataFrame(new_data).to_csv('standings_data.csv', index=False)
-                st.success("順位表を更新しました！")
+                st.success("更新完了！")
                 st.rerun()
 
-    # 2. 順位表の表示と選択機能
     if df_standings is not None:
-        st.write("📋 **チームを選択して詳細を表示**")
+        # 順位表の表示
         event = st.dataframe(
             df_standings,
             on_select="rerun",
             selection_mode="single-row",
             hide_index=True,
             use_container_width=True,
+            key="standing_table_final",
             column_config={
-                "id": None, # 内部用IDは隠す
-                "得失点": st.column_config.NumberColumn(format="%d ⚽")
+                "id": None, 
+                "順位": st.column_config.NumberColumn(width="small"),
+                "勝": st.column_config.NumberColumn(width="small"),
+                "分": st.column_config.NumberColumn(width="small"),
+                "負": st.column_config.NumberColumn(width="small")
             }
         )
 
-        # 3. チームが選択された時の詳細表示
+        # チーム選択後の詳細表示
         if event.selection.rows:
-            selected_row_index = event.selection.rows[0]
-            team_id = df_standings.iloc[selected_row_index]['id']
-            team_name = df_standings.iloc[selected_row_index]['チーム']
+            idx = event.selection.rows[0]
+            t_id = df_standings.iloc[idx]['id']
+            t_name = df_standings.iloc[idx]['チーム']
 
-            st.markdown("---")
-            st.subheader(f"🛡️ {team_name} のスカッド分析")
-
-            with st.spinner('最新の選手データをロード中...'):
-                detail = get_team_details_api(team_id)
+            st.markdown(f"### 🛡️ {t_name}")
             
-            if detail and 'squad' in detail:
-                c1, c2 = st.columns(2)
-                with c1:
-                    st.info(f"👤 **監督**: {detail.get('coach', {}).get('name', '情報なし')}")
-                with c2:
-                    st.info(f"🎨 **クラブカラー**: {detail.get('clubColors', '情報なし')}")
+            # --- 検索リンクボタンを配置 ---
+            st.link_button(f"🔍 {t_name} について詳しく調べる", 
+                           f"https://www.google.com/search?q={t_name.replace(' ', '+')}",
+                           use_container_width=True)
+            
+            with st.spinner('選手データを取得中...'):
+                detail = get_team_details_api(t_id)
+            
+            if detail:
+                col1, col2 = st.columns(2)
+                col1.info(f"👤 **監督**: {detail.get('coach', {}).get('name', 'N/A')}")
+                col2.info(f"🎨 **カラー**: {detail.get('clubColors', 'N/A')}")
 
-                players = detail['squad']
-                if players:
-                    st.write("### 📋 登録選手一覧")
-                    df_squad = pd.DataFrame(players)[['name', 'position', 'nationality', 'dateOfBirth']]
-                    df_squad.columns = ['選手名', 'ポジション', '国籍', '生年月日']
-                    
-                    p_event = st.dataframe(
-                        df_squad,
-                        on_select="rerun",
-                        selection_mode="single-row",
-                        hide_index=True,
-                        use_container_width=True
-                    )
-                    
-                    # 4. 選手ごとの詳細カード表示
-                    if p_event.selection.rows:
-                        p_idx = p_event.selection.rows[0]
-                        p_data = players[p_idx]
-                        
-                        st.success(f"🔍 **{p_data['name']}** の詳細プロフィール")
-                        
-                        m1, m2, m3 = st.columns(3)
-                        m1.metric("役割", p_data.get('position', 'N/A'))
-                        m2.metric("国籍", p_data.get('nationality', 'N/A'))
-                        m3.metric("背番号", p_data.get('shirtNumber', '-'))
-                        
-                        with st.expander("さらに詳しいデータを表示（Raw Data）"):
-                            st.json(p_data)
-                else:
-                    st.warning("選手リストが取得できませんでした。")
-            else:
-                st.error("チーム詳細の取得に失敗しました。1分待ってからもう一度お試しください。")
-        else:
-            st.caption("☝️ 上の表からチームを1つクリックすると、詳細が表示されます。")
+                if 'squad' in detail:
+                    st.write("#### 📋 選手名簿")
+                    df_squad = pd.DataFrame(detail['squad'])[['name', 'position', 'nationality']]
+                    df_squad.columns = ['選手名', 'ポジション', '国籍']
+                    st.dataframe(df_squad, hide_index=True, use_container_width=True, key=f"sq_{t_id}")
+    else:
+        st.info("上のボタンを押して順位表を表示してください。")
 # --- Tab 3: 得点ランキング ---
 with tab3:
     st.subheader("🏆 Player Stats Ranking")

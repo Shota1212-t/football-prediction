@@ -120,14 +120,18 @@ def get_team_form_api(team_id):
 
 @st.cache_data(ttl=3600)
 def get_team_details_api(team_id):
-    # ファイルの上の方で作った共通の headers をそのまま使います！
+    """
+    指定したチームの詳細情報（監督・選手名簿）を取得します
+    """
     url = f"https://api.football-data.org/v4/teams/{team_id}"
-    
     try:
+        # ファイル上部で定義済みの headers をそのまま使用
         response = requests.get(url, headers=headers)
+        if response.status_code != 200:
+            return None
         return response.json()
     except Exception as e:
-        print(f"Error fetching team details: {e}")
+        print(f"Error: {e}")
         return None
 
 if not API_KEY:

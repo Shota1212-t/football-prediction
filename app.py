@@ -78,8 +78,90 @@ with tab1:
             except KeyError:
                 continue
 
-# app.py の Tab 2 部分
+# app.py の with tab2: ブロックをこの内容に丸ごと入れ替えてください
 with tab2:
+    st.header("📊 リーグ順位表 & チーム分析")
+    
+    # データの読み込み
+    try:
+        df_standings = pd.read_csv('standings_data.csv')
+    except:
+        st.warning("順位表データが見つかりません。予測を更新するか、データを再取得してください。")
+        st.stop()
+
+    # 1. 順位表の表示と選択機能
+    st.write("📋 **チームを選択して詳細を表示**")
+    event = st.dataframe(
+        df_standings,
+        on_select="rerun",
+        selection_mode="single-row",
+        hide_index=True,
+        use_container_width=True,
+        column_config={
+            "id": None, # ID列は内部処理用なので非表示
+            "得失点": st.column_config.NumberColumn(format="%d ⚽")
+        }
+    )
+
+    # 2. チームが選択された時の詳細表示
+    if event.selection.rows:
+        selected_row_index = event.selection.rows[0]
+        team_id = df_standings.iloc[selected_row_index]['id']
+        team_name = df_standings.iloc[selected_row_index]['チーム']
+
+        st.markdown(f"---")
+        st.subheader(f"🛡️ {team_name} のスカッド分析")
+
+        with st.spinner('最新の選手データをロード中...'):
+            detail = get_team_details_api(team_id)
+        
+        if detail:
+            # 監督とクラブカラーの表示
+            c1, c2 = st.columns(2)
+            with c1:
+                st.info(f"👤 **監督**: {detail.get('coach', {}).get('name', '情報なし')}")
+            with c2:
+                colors = detail.get('clubColors', '情報なし')
+                st.info(f"🎨 **クラブカラー**: {colors}")
+
+            # 選手一覧
+            players = detail.get('squad', [])
+            if players:
+                st.write("### 📋 登録選手一覧")
+                df_squad = pd.DataFrame(players)[['name', 'position', 'nationality', 'dateOfBirth']]
+                df_squad.columns = ['選手名', 'ポジション', '国籍', '生年月日']
+                
+                # 選手名簿の表示（ここでも選択可能に）
+                p_event = st.dataframe(
+                    df_squad,
+                    on_select="rerun",
+                    selection_mode="single-row",
+                    hide_index=True,
+                    use_container_width=True
+                )
+                
+                # 3. 選手個別の詳細表示（ここをリッチに）
+                if p_event.selection.rows:
+                    p_idx = p_event.selection.rows[0]
+                    p_data = players[p_idx]
+                    
+                    st.success(f"🔍 **{p_data['name']}** の詳細プロフィール")
+                    
+                    # カード形式で情報を整理
+                    col_a, col_b, col_c = st.columns(3)
+                    col_a.metric("役割", p_data.get('position', 'N/A'))
+                    col_b.metric("国籍", p_data.get('nationality', 'N/A'))
+                    col_c.metric("背番号", p_data.get('shirtNumber', '-'))
+                    
+                    # APIから取得可能な全データを展開
+                    with st.expander("さらに詳しいデータを表示（Raw Data）"):
+                        st.json(p_data)
+            else:
+                st.warning("選手リストが取得できませんでした。")
+        else:
+            st.error("チーム詳細の取得に失敗しました。APIキーまたは制限を確認してください。")
+    else:
+        st.caption("☝️ 上の表からチームを1つクリックすると、監督や選手の一覧が表示されます。")
     st.subheader("📊 Premier League Standings")
     
     # --- 順位表更新ボタン ---
@@ -156,6 +238,7 @@ with tab2:
                     st.json(players[p_idx])
             else:
                 st.warning("このチームの選手情報(squad)がAPIから返されませんでした。")
+
 # --- Tab 3: 得点ランキング ---
 with tab3:
     st.subheader("🏆 Player Stats Ranking")

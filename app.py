@@ -78,8 +78,68 @@ with tab1:
             except KeyError:
                 continue
 
-# app.py の with tab2: ブロックをこの内容に丸ごと入れ替えてください
 with tab2:
+    st.header("📊 プレミアリーグ順位表 & チーム詳細")
+    
+    # 1. APIから直接データを取得（@st.cache_dataが効くのでAPI制限の心配なし！）
+    with st.spinner('データを読み込み中...'):
+        standings_list = get_standings_api()
+        
+    if not standings_list:
+        st.error("データの取得に失敗しました。しばらく待ってからリロードしてください。")
+    else:
+        df_standings = pd.DataFrame(standings_list)
+        
+        # 念のための安全装置：万が一 'id' がなくてもクラッシュさせない
+        if 'id' not in df_standings.columns:
+            st.error("データが古い形式です。しばらく経ってから再度お試しください。")
+        else:
+            # 2. 順位表の表示
+            st.write("📋 **チームをクリックすると下に詳細が表示されます**")
+            event = st.dataframe(
+                df_standings,
+                on_select="rerun",
+                selection_mode="single-row",
+                hide_index=True,
+                use_container_width=True,
+                key="standing_table_auto",
+                column_config={"id": None} # IDを隠す
+            )
+
+            # 3. チーム詳細の表示
+            if event.selection.rows:
+                idx = event.selection.rows[0]
+                t_id = df_standings.iloc[idx]['id']
+                t_name = df_standings.iloc[idx]['チーム']
+
+                st.markdown(f"---")
+                st.subheader(f"🛡️ {t_name}")
+                
+                # 検索ボタン
+                st.link_button(f"🔍 {t_name} をGoogleで調べる", 
+                               f"https://www.google.com/search?q={t_name.replace(' ', '+')}",
+                               use_container_width=True)
+
+                with st.spinner('選手情報をロード中...'):
+                    # ここもキャッシュが効くのでAPI制限に引っかかりにくい
+                    detail = get_team_details_api(t_id)
+                
+                if detail:
+                    c1, c2 = st.columns(2)
+                    c1.info(f"👤 **監督**: {detail.get('coach', {}).get('name', '情報なし')}")
+                    c2.info(f"🎨 **カラー**: {detail.get('clubColors', '情報なし')}")
+
+                    # 選手名簿
+                    players = detail.get('squad', [])
+                    if players:
+                        st.write("#### 📋 登録選手一覧")
+                        df_sq = pd.DataFrame(players)[['name', 'position', 'nationality']]
+                        df_sq.columns = ['選手名', 'ポジション', '国籍']
+                        st.dataframe(df_sq, hide_index=True, use_container_width=True, key=f"sq_list_{t_id}")
+                    else:
+                        st.warning("選手データが空でした。")
+                else:
+                    st.error("API制限などの理由で詳細データを取得できませんでした。1分ほど待ってから別のチームをお試しください。")
     st.header("📊 プレミアリーグ順位表 & チーム詳細")
     
     # 1. データの読み込み

@@ -140,74 +140,7 @@ with tab2:
                         st.warning("選手データが空でした。")
                 else:
                     st.error("API制限などの理由で詳細データを取得できませんでした。1分ほど待ってから別のチームをお試しください。")
-    st.header("📊 プレミアリーグ順位表 & チーム詳細")
     
-    # 1. データの読み込み
-    df_standings = None
-    try:
-        if os.path.exists('standings_data.csv'):
-            df_standings = pd.read_csv('standings_data.csv')
-    except:
-        pass
-
-    # 2. 更新ボタン（必須！）
-    if st.button('🔄 順位表データを最新にする', key="update_full_btn"):
-        with st.spinner('最新の順位表を取得中...'):
-            new_data = get_standings_api()
-            if new_data:
-                df_standings = pd.DataFrame(new_data)
-                df_standings.to_csv('standings_data.csv', index=False)
-                st.success("順位表を更新しました！")
-                st.rerun()
-
-    # 3. 順位表の表示
-    if df_standings is not None and not df_standings.empty:
-        st.write("📋 **チームをクリックすると下に詳細が表示されます**")
-        event = st.dataframe(
-            df_standings,
-            on_select="rerun",
-            selection_mode="single-row",
-            hide_index=True,
-            use_container_width=True,
-            key="standing_table_v3",
-            column_config={"id": None} # IDを隠す
-        )
-
-        # 4. チーム詳細の表示
-        if event.selection.rows:
-            idx = event.selection.rows[0]
-            t_id = df_standings.iloc[idx]['id']
-            t_name = df_standings.iloc[idx]['チーム']
-
-            st.markdown(f"---")
-            st.subheader(f"🛡️ {t_name}")
-            
-            # 検索ボタン
-            st.link_button(f"🔍 {t_name} をGoogleで調べる", 
-                           f"https://www.google.com/search?q={t_name.replace(' ', '+')}",
-                           use_container_width=True)
-
-            with st.spinner('選手情報をロード中...'):
-                detail = get_team_details_api(t_id)
-            
-            if detail:
-                c1, c2 = st.columns(2)
-                c1.info(f"👤 **監督**: {detail.get('coach', {}).get('name', '情報なし')}")
-                c2.info(f"🎨 **カラー**: {detail.get('clubColors', '情報なし')}")
-
-                # 選手名簿
-                players = detail.get('squad', [])
-                if players:
-                    st.write("#### 📋 登録選手一覧")
-                    df_sq = pd.DataFrame(players)[['name', 'position', 'nationality']]
-                    df_sq.columns = ['選手名', 'ポジション', '国籍']
-                    st.dataframe(df_sq, hide_index=True, use_container_width=True, key=f"sq_list_{t_id}")
-                else:
-                    st.warning("選手データが空でした。")
-            else:
-                st.error("APIから詳細データを取得できませんでした。少し待ってからお試しください。")
-    else:
-        st.info("上のボタンを押してデータを取得してください。")
 # --- Tab 3: 得点ランキング ---
 with tab3:
     st.subheader("🏆 Player Stats Ranking")

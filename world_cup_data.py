@@ -35,16 +35,21 @@ def get_world_cup_teams():
 # =========================
 # チームごとの試合取得
 # =========================
-def get_team_matches(team_id):
-    url = f"https://api.football-data.org/v4/teams/{team_id}/matches"
+
+
+def fetch_world_cup_matches():
+    url = "https://api.football-data.org/v4/competitions/WC/matches"
+    
     response = requests.get(url, headers=headers)
 
     if response.status_code != 200:
-        print(f"チーム {team_id} エラー:", response.status_code)
+        print("Error:", response.status_code)
         return []
 
     data = response.json()
     return data["matches"]
+
+
 
 
 # =========================

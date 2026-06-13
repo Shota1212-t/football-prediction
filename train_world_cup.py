@@ -12,10 +12,10 @@ import joblib
 # 1. Wカップ学習用データの読み込み
 try:
     df = pd.read_csv('world_cup_training_data.csv')
-    if len(df) < 10:
-        print("警告: データが不足しています。world_cup_data.pyを実行してください")
-        print("実行コマンド: python world_cup_data.py")
-        exit(1)
+    
+if len(df) < 10:
+    print("データ少ないですが続行します")
+        
 except FileNotFoundError:
     print("エラー: world_cup_training_data.csv が見つかりません")
     print("world_cup_data.py を実行してください: python world_cup_data.py")

@@ -54,6 +54,21 @@ def get_upcoming_matches_api():
     # 試合データの中にエンブレムのURLが含まれているので、そのまま返せばOKです
     return data.get('matches', [])
 
+@st.cache_data(ttl=86400)
+def get_upcoming_world_cup_matches_api():
+    """FIFA World Cupの予定試合を取得する関数"""
+    url = "https://api.football-data.org/v4/competitions/WC/matches?status=SCHEDULED"
+    try:
+        response = requests.get(url, headers=headers)
+        if response.status_code != 200:
+            return []
+        
+        data = response.json()
+        return data.get('matches', [])
+    except Exception as e:
+        st.error(f"Wカップのデータ取得エラー: {e}")
+        return []
+
 @st.cache_data(ttl=3600)
 def get_standings_api():
     url = "https://api.football-data.org/v4/competitions/PL/standings"

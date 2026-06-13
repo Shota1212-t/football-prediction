@@ -13,8 +13,8 @@ import joblib
 try:
     df = pd.read_csv('world_cup_training_data.csv')
     
-if len(df) < 10:
-    print("データ少ないですが続行します")
+    if len(df) < 10:
+        print("データ少ないですが続行します")
         
 except FileNotFoundError:
     print("エラー: world_cup_training_data.csv が見つかりません")

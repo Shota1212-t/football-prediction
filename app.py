@@ -5,8 +5,8 @@ import streamlit as st
 import torch
 import joblib
 import pandas as pd
-from model import SoccerPredictor
-from utils import get_recent_points, get_upcoming_matches_api, get_standings_api, get_top_scorers_api, get_team_form_api, get_team_details_api, get_upcoming_world_cup_matches_api
+from model import SoccerPredictor, WorldCupPredictor
+from utils import get_recent_points, get_upcoming_matches_api, get_standings_api, get_top_scorers_api, get_team_form_api, get_team_details_api, get_upcoming_world_cup_matches_api, get_country_ranking
 
 st.set_page_config(page_title="Football AI Predictor", page_icon="⚽")
 st.title("⚽ Football AI Predictor")
@@ -16,6 +16,7 @@ tab1, tab2, tab3, tab4 = st.tabs(["🔥 PL試合予測", "🌍 Wカップ予測"
 
 @st.cache_resource
 def load_assets():
+    # Premier League用モデル
     model = SoccerPredictor(6)
     model.load_state_dict(torch.load('soccer_model.pth', map_location=torch.device('cpu')))
     model.eval()
@@ -24,30 +25,62 @@ def load_assets():
     team_to_id = dict(zip(team_df.TeamName, team_df.ID))
     return model, scaler, team_to_id
 
+@st.cache_resource
+def load_world_cup_assets():
+    # World Cup用モデル
+    try:
+        model_wc = WorldCupPredictor(6)
+        model_wc.load_state_dict(torch.load('world_cup_model.pth', map_location=torch.device('cpu')))
+        model_wc.eval()
+        scaler_wc = joblib.load('world_cup_scaler.pkl')
+        return model_wc, scaler_wc
+    except FileNotFoundError:
+        return None, None
+
 model, scaler, team_to_id = load_assets()
+model_wc, scaler_wc = load_world_cup_assets()
 
 # ヘルパー関数：試合予測を表示
-def display_match_prediction(home_name, away_name, home_crest, away_crest, home_id=None, away_id=None):
+def display_match_prediction(home_name, away_name, home_crest, away_crest, home_id=None, away_id=None, is_world_cup=False):
     """試合予測を表示する関数"""
     try:
-        # IDが提供されない場合はスキップ
-        if home_id is None or away_id is None:
-            return False
-        
-        # チームIDがteam_to_idに存在しない場合はスキップ
-        if home_id not in [v for v in team_to_id.values()] or away_id not in [v for v in team_to_id.values()]:
-            h_form = 7.0
-            a_form = 7.0
+        if is_world_cup:
+            # World Cup用
+            if model_wc is None or scaler_wc is None:
+                st.warning("⚠️ Wカップモデルがまだ準備できていません。以下のコマンドを実行してください:")
+                st.code("python world_cup_data.py\npython train_world_cup.py", language="bash")
+                return False
+            
+            # ランキング情報から特徴量を作成
+            home_rank = get_country_ranking(home_name)
+            away_rank = get_country_ranking(away_name)
+            rank_diff = home_rank - away_rank
+            
+            # World Cup用特徴量
+            raw_data = [[home_rank, away_rank, rank_diff, 1.5, 1.0, 1.0]]
+            scaled_data = scaler_wc.transform(raw_data)
+            
+            with torch.no_grad():
+                output = model_wc(torch.FloatTensor(scaled_data))
+                prob = torch.nn.functional.softmax(output, dim=1)
         else:
-            h_form = get_recent_points(home_id)
-            a_form = get_recent_points(away_id)
-        
-        raw_data = [[home_id, away_id, h_form, a_form, 7.0, 0.0]]
-        scaled_data = scaler.transform(raw_data)
-        
-        with torch.no_grad():
-            output = model(torch.FloatTensor(scaled_data))
-            prob = torch.nn.functional.softmax(output, dim=1)
+            # Premier League用
+            if home_id is None or away_id is None:
+                return False
+            
+            if home_id not in [v for v in team_to_id.values()] or away_id not in [v for v in team_to_id.values()]:
+                h_form = 7.0
+                a_form = 7.0
+            else:
+                h_form = get_recent_points(home_id)
+                a_form = get_recent_points(away_id)
+            
+            raw_data = [[home_id, away_id, h_form, a_form, 7.0, 0.0]]
+            scaled_data = scaler.transform(raw_data)
+            
+            with torch.no_grad():
+                output = model(torch.FloatTensor(scaled_data))
+                prob = torch.nn.functional.softmax(output, dim=1)
         
         # レイアウトの改善
         with st.container():
@@ -79,24 +112,28 @@ def display_match_prediction(home_name, away_name, home_crest, away_crest, home_
             st.divider()
         return True
     except Exception as e:
+        st.error(f"予測エラー: {e}")
         return False
 
 # Tab 1: PL試合予測
 with tab1:
     if st.button('試合予測を更新'):
         matches = get_upcoming_matches_api()
-        for m in matches[:10]:
-            home_name = m['homeTeam']['name']
-            away_name = m['awayTeam']['name']
-            home_crest = m['homeTeam'].get('crest')
-            away_crest = m['awayTeam'].get('crest')
-            
-            try:
-                home_id = team_to_id[home_name]
-                away_id = team_to_id[away_name]
-                display_match_prediction(home_name, away_name, home_crest, away_crest, home_id, away_id)
-            except KeyError:
-                continue
+        if not matches:
+            st.warning("試合予定が見つかりません")
+        else:
+            for m in matches[:10]:
+                home_name = m['homeTeam']['name']
+                away_name = m['awayTeam']['name']
+                home_crest = m['homeTeam'].get('crest')
+                away_crest = m['awayTeam'].get('crest')
+                
+                try:
+                    home_id = team_to_id[home_name]
+                    away_id = team_to_id[away_name]
+                    display_match_prediction(home_name, away_name, home_crest, away_crest, home_id, away_id, is_world_cup=False)
+                except KeyError:
+                    continue
 
 # Tab 2: Wカップ試合予測
 with tab2:
@@ -109,15 +146,17 @@ with tab2:
         if not wc_matches:
             st.warning("Wカップのスケジュール情報を取得できませんでした。")
         else:
-            for m in wc_matches[:15]:
+            match_count = 0
+            for m in wc_matches:
                 home_name = m['homeTeam']['name']
                 away_name = m['awayTeam']['name']
                 home_crest = m['homeTeam'].get('crest')
                 away_crest = m['awayTeam'].get('crest')
-                home_id = m['homeTeam'].get('id')
-                away_id = m['awayTeam'].get('id')
                 
-                display_match_prediction(home_name, away_name, home_crest, away_crest, home_id, away_id)
+                if display_match_prediction(home_name, away_name, home_crest, away_crest, is_world_cup=True):
+                    match_count += 1
+                    if match_count >= 15:
+                        break
 
 # Tab 3: 順位表
 with tab3:

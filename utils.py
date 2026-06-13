@@ -141,6 +141,75 @@ def get_team_details_api(team_id):
     except Exception as e:
         return None
 
+def get_country_ranking(country_name):
+    """国のFIFAランキング情報を取得（簡易版：固定値）
+    
+    実際のランキングはhttps://www.fifa.com/rankings/menで確認可能です
+    定期的に更新してください
+    """
+    rankings = {
+        # Top 10
+        'Argentina': 1,
+        'France': 2,
+        'Brazil': 3,
+        'England': 4,
+        'Belgium': 5,
+        'Netherlands': 6,
+        'Spain': 7,
+        'Germany': 8,
+        'Italy': 9,
+        'Portugal': 10,
+        
+        # 11-20
+        'Uruguay': 11,
+        'Croatia': 12,
+        'Mexico': 13,
+        'Denmark': 14,
+        'Switzerland': 15,
+        'Poland': 16,
+        'Sweden': 17,
+        'Norway': 18,
+        'Czech Republic': 19,
+        'Austria': 20,
+        
+        # 21-30
+        'Wales': 21,
+        'Serbia': 22,
+        'Turkey': 23,
+        'Japan': 24,
+        'South Korea': 25,
+        'Canada': 26,
+        'USA': 27,
+        'Australia': 28,
+        'Morocco': 29,
+        'Ecuador': 30,
+        
+        # 31-40
+        'Senegal': 31,
+        'Iran': 32,
+        'Saudi Arabia': 33,
+        'Tunisia': 34,
+        'Qatar': 35,
+        'Costa Rica': 36,
+        'Ghana': 37,
+        'Cameroon': 38,
+        'Hungary': 39,
+        'Romania': 40,
+        
+        # その他
+        'Greece': 41,
+        'Slovakia': 42,
+        'Bulgaria': 43,
+        'Iceland': 44,
+        'Finland': 45,
+        'Slovenia': 46,
+        'Russia': 47,
+        'Ukraine': 48,
+        'Bosnia': 49,
+        'Thailand': 50,
+    }
+    return rankings.get(country_name, 50)  # デフォルト: 50位
+
 if not API_KEY:
     API_KEY = os.getenv('FOOTBALL_API_KEY')
 

@@ -1,0 +1,48 @@
+name: Auto Update World Cup Model
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # 毎日9時（日本）
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: コード取得
+        uses: actions/checkout@v3
+
+      - name: Python設定
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: パッケージインストール
+        run: |
+          pip install pandas numpy scikit-learn torch requests python-dotenv joblib
+
+      - name: APIキー設定
+        run: echo "FOOTBALL_API_KEY=${{ secrets.API_KEY }}" > .env
+
+      - name: データ更新
+        run: python world_cup_data.py
+
+      - name: 学習
+        run: python train_world_cup.py
+
+      - name: Git設定
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+
+      - name: 変更をcommit
+        run: |
+          git add .
+          git commit -m "auto update model" || echo "No changes"
+
+      - name: push
+        run: git push

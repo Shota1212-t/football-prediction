@@ -52,27 +52,6 @@ def fetch_world_cup_matches():
 
 
 
-# =========================
-# データ収集メイン
-# =========================
-def collect_all_matches():
-    print("W杯出場チーム取得中...")
-    teams = get_world_cup_teams()
-
-    all_matches = []
-
-    for team in teams:
-        team_id = team["id"]
-        team_name = team["name"]
-
-        print(f"取得中: {team_name}")
-
-        matches = get_team_matches(team_id)
-        all_matches.extend(matches)
-
-        time.sleep(6)  # API制限対策（重要）
-
-    return all_matches
 
 
 # =========================

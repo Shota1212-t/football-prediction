@@ -50,6 +50,21 @@ def fetch_world_cup_matches():
     return data["matches"]
 
 
+# =========================
+# データ収集メイン
+# =========================
+def collect_all_matches():
+    print("W杯の試合データを取得中...")
+
+    url = "https://api.football-data.org/v4/competitions/WC/matches"
+    response = requests.get(url, headers=headers)
+
+    if response.status_code != 200:
+        print("エラー:", response.status_code)
+        return []
+
+    data = response.json()
+    return data["matches"]
 
 
 

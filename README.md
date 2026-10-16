@@ -1,3 +1,6 @@
+以前のバージョン。最新版は以下
+https://github.com/Shota1212-t/euro-football-predictor
+
 # football-prediction
 
 サッカーの試合結果（勝ち・引き分け・負け）を予測する機械学習プロジェクトです。  
